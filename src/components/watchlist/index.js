@@ -88,24 +88,9 @@ WatchList.Button = function WatchList({ children, category, ...restProps }) {
     const {watchId} = useContext(WatchListContext)
     const [isAddedInDb, setIsAddedInDb] = useState(false)
     const {itemFeature= {}} = useContext(FeatureContext)
-    console.log('featureddd', watchId, itemFeature.id)
     const { firebase } = useContext(FirebaseContext);
     const user = firebase.auth().currentUser || {};
 
-    // const dbRef = firebase.database().ref('watchlist').child(itemFeature.id);
-    
-
-    // let item = firebase.ref(itemFeature.id)
-    var starCountRef = firebase.database().ref('watchlist/' + user.uid + '/watchId');
-    starCountRef.on('value', (snapshot) => {
-    const data = snapshot.val();
-    if(data != null){
-      // let {watchId= []} = data
-      console.log('see data123',data);
-    }
-    });
-
-    console.log('see 1234',starCountRef);
     useEffect(() => {
       if(watchId.indexOf(itemFeature.id) != -1){
         setIsAddedInDb(true)
@@ -113,12 +98,8 @@ WatchList.Button = function WatchList({ children, category, ...restProps }) {
     },[watchId, itemFeature])
 
 
-    const handleClick = () => {
-      isAddedInDb ? setAdd(false) : setAdd(true)
-      console.log("handle", itemFeature.id)
-    }
 
   return (  
-    <Button onClick={handleClick}>{!isAddedInDb ? 'Add To WatchList' : 'In WatchList!'}</Button>
+    <Button onClick={() => {isAddedInDb ? setAdd(false) : setAdd(true)}} disabled= {isAddedInDb}>{!isAddedInDb ? 'Add To WatchList' : 'Remove'}</Button>
   ) 
 };

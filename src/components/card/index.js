@@ -94,7 +94,6 @@ Card.Image = function CardImage({ item,isWatchList= false,...restProps }) {
       url = `/images/series/${item.genre}/${item.slug}/small.jpg`
     }
   }
-  console.log('my img url',url)
   return isWatchList ? <img src={url} /> : <Image  {...restProps} />;
  
 };

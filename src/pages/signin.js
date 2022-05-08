@@ -9,6 +9,7 @@ import * as ROUTES from '../constants/routes';
 export default function Signin() {
   const history = useHistory();
   const { firebase } = useContext(FirebaseContext);
+  const user = firebase.auth().currentUser || {};
 
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
@@ -22,16 +23,17 @@ export default function Signin() {
     firebase
       .auth()
       .signInWithEmailAndPassword(emailAddress, password)
-      .then(() => {
+      .then((data) => {
+        console.log("login data", data)
         window.location.href = ROUTES.BROWSE
         // history.push(ROUTES.BROWSE);
-      })
-      .catch((error) => {
+      }).catch((error) => {
         setEmailAddress('');
         setPassword('');
         setError(error.message);
-      });
-  };
+      })
+  }
+  
 
   return (
     <>

@@ -3,11 +3,12 @@ import Fuse from 'fuse.js';
 import { useHistory } from 'react-router-dom';
 import { Card, Header, Loading, Player, WatchList } from '../components';
 import * as ROUTES from '../constants/routes';
-import logo from '../logo.svg';
-import image2vector from '../image2vector.svg'
+import image2vector from '../newImg.svg'
 import { FirebaseContext } from '../context/firebase';
 import { SelectProfileContainer } from './profiles';
 import { FooterContainer } from './footer';
+import CountdownTimer from './countDownTimer'
+import { useCountdown } from './useCountDown';
 
 export function BrowseContainer({ slides }) {
   const [category, setCategory] = useState('series');
@@ -18,17 +19,58 @@ export function BrowseContainer({ slides }) {
   const [slideRows, setSlideRows] = useState([]);
   const [watchListIds, setWatchListIds] = useState([])
   const [watchList, setWatchList] = useState([])
+  const [timeLeft, setTimeLeft] = useState(4 * 60 * 60 * 1000)
+  const [timeInterval, setTimeInterval] = useState(0)
   const [addedList, setAddedList] = useState([])
   const [imgUrl, setImgUrl] = useState('')
   const history = useHistory();
   const { firebase } = useContext(FirebaseContext);
   const user = firebase.auth().currentUser || {};
 
+  // const THREE_DAYS_IN_MS =  timeLeft;
+  // console.log('incoming time',timeLeft)
+  const NOW_IN_MS = new Date().getTime();
+
+  useEffect(() => {
+    var starCountRef = firebase.database().ref('users/' + user.uid);
+    console.log('my data2',starCountRef)
+    starCountRef.on('value', (snapshot) => {
+      const data = snapshot.val();
+      if(data){
+        console.log('my data3',snapshot,new Date(data['loginIn']),data)
+        // let timeInt = data.logoutTime - data.loginTime;
+        if(!data.timeSpend){
+          setTimeInterval(0)
+        }
+        else{
+          setTimeInterval(data.timeSpend);
+        }
+        console.log("my time",new Date(data.loggedIn).getDate(), new Date().getDate())
+      }
+    });
+  },[user])
+  
+  useEffect(() => {
+    if(timeInterval > 4 * 60 * 60 * 1000){
+      alert("time limit exceeded,You can see tomorrow")
+      return;
+    }
+
+    console.log('timing',(60 * 60 * 1000 - 80140), timeInterval)
+    window.sessionStorage.setItem('COUNTER_KEY', 4 * 60 * 60 * 1000 - timeInterval);
+    setTimeLeft(4 * 60 * 60 * 1000 - timeInterval)
+
+  },[timeInterval])
+  
+  const dateTimeAfterThreeDays = NOW_IN_MS + timeLeft
+  console.log('time logs',timeLeft)
+
   useEffect(() => {
     setTimeout(() => {
       setLoading(false);
     }, 3000);
   }, [profile.displayName]);
+
 
   console.log('my slide',slides)
   useEffect(() => {
@@ -49,7 +91,6 @@ export function BrowseContainer({ slides }) {
     }
     // eslint-disable-next-line
   }, [searchTerm]);
-
   
   useEffect(() => {
     var starCountRef = firebase.database().ref('watchlist/' + user.uid);
@@ -87,18 +128,46 @@ export function BrowseContainer({ slides }) {
   },[slides, watchListIds])
 
   console.log('fix watch', watchListIds, watchList, slides)
-  const handleClick = () => {
-    window.location.href = '/signup'
-    firebase.auth().signOut()
-  }
 
   const handleSeries = () => {
     setCategory('series');
     setIsWatchList(false)
-    // window.location.href = ROUTES.BROWSE
-    history.push('/browse')
+    window.location.href = ROUTES.BROWSE
+    // history.push('/browse')
   }
-  
+
+  const handleClick = () => {
+    let newUser = window.localStorage.getItem('authUser');
+    let userTime = JSON.parse(newUser).lastLoginAt
+    let timeInt = new Date().getTime() - parseInt(userTime);
+
+    var starCountRef = firebase.database().ref('users/' + user.uid);
+    console.log('my data2',starCountRef)
+    starCountRef.on('value', (snapshot) => {
+      const data = snapshot.val();
+      if(data){
+        console.log('my data3',snapshot,new Date(data['loginIn']),data)
+        // let timeInt = data.logoutTime - data.loginTime;
+        if(!data.timeSpend || new Date(data.loggedIn).getDate() != new Date().getDate() || new Date(data.loggedIn).getMonth() != new Date().getMonth()){
+          timeInt = 0;
+        }
+        else{
+          timeInt = timeInt + data.timeSpend;
+        }
+        console.log("my time",data.loggedIn)
+      }
+    });
+
+   
+    firebase.auth().signOut().then(()=> {
+      firebase.database().ref('users/' + user.uid).update({
+      timeSpend:timeInt,
+      loggedIn:new Date().getTime()
+   }).then(()=> console.log('time noted2',dateTimeAfterThreeDays)).catch(()=> console.log("error"));
+   }).catch((err)=> console.log(err))
+    window.location.href = '/signin'
+  }
+
   console.log('watch list',watchListIds, watchList)
   return profile.displayName ? (
     <>
@@ -114,7 +183,7 @@ export function BrowseContainer({ slides }) {
             <Header.TextLink active={category === 'films' ? 'true' : 'false'} onClick={() => setCategory('films')}>
               Films
             </Header.TextLink>
-            <Header.TextLink onClick={() => {history.push(ROUTES.WATCHLIST); setIsWatchList(!isWatchList)}}>
+            <Header.TextLink  onClick={() => {history.push(ROUTES.WATCHLIST); setIsWatchList(true)}}>
               WatchList
             </Header.TextLink>
           </Header.Group>
@@ -128,10 +197,11 @@ export function BrowseContainer({ slides }) {
                   <Header.TextLink>{user.displayName}</Header.TextLink>
                 </Header.Group>
                 <Header.Group>
-                  <Header.TextLink onClick={() => firebase.auth().signOut()}>Sign out</Header.TextLink>
+                  <Header.TextLink onClick={() => handleClick()}>Sign out</Header.TextLink>
                 </Header.Group>
               </Header.Dropdown>
             </Header.Profile>
+            <CountdownTimer targetDate={dateTimeAfterThreeDays} />
           </Header.Group>
         </Header.Frame>
 
@@ -144,7 +214,6 @@ export function BrowseContainer({ slides }) {
           </Header.Text>
           <Header.PlayButton>Play</Header.PlayButton>
         </Header.Feature>}
-
       </Header>}
 
 
@@ -176,6 +245,7 @@ export function BrowseContainer({ slides }) {
                 </Header.Group>
               </Header.Dropdown>
             </Header.Profile>
+            <CountdownTimer targetDate={dateTimeAfterThreeDays} />
           </Header.Group>
         </Header.Frame>
         <Header.Feature watchList={true}>
@@ -229,6 +299,7 @@ export function BrowseContainer({ slides }) {
             </Card.Entities>
             <Card.Feature category={category} isWatchList= {true}>
               <Player>
+                <Player.Remove/>
                 <Player.Button />
                 <Player.Video src="/videos/bunny.mp4" />
               </Player>
